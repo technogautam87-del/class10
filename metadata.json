@@ -1,0 +1,6 @@
+{
+  "name": "कक्षा 10 लर्निंग प्लेटफ़ॉर्म",
+  "description": "कक्षा 10 के छात्रों के लिए एक उत्कृष्ट हिंदी माध्यम आधारित शैक्षणिक प्लेटफ़ॉर्म जिसमें विषय ब्लॉक, क्विज़, नोट्स और डेवलपर टीम शामिल हैं।",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
