@@ -9,7 +9,7 @@ import {
   Book,
   Compass
 } from "lucide-react";
-import { SUBJECT_CHAPTERS, MindMapNode } from "../data/simulationData";
+import { SUBJECT_CHAPTERS, MindMapNode, getOrCreateChapterStructure } from "../data/simulationData";
 import MathSimulations from "./simulations/MathSimulations";
 import ScienceSimulations from "./simulations/ScienceSimulations";
 import SstSimulations from "./simulations/SstSimulations";
@@ -18,11 +18,15 @@ import LanguageSimulations from "./simulations/LanguageSimulations";
 interface MindMapSimulationTabProps {
   subjectId: string;
   fontSizeClass: string;
+  selectedChapterId?: string | null;
+  selectedChapterTitle?: string;
 }
 
 export default function MindMapSimulationTab({
   subjectId,
   fontSizeClass,
+  selectedChapterId: propChapterId,
+  selectedChapterTitle,
 }: MindMapSimulationTabProps) {
   // Normalize subjectId to match our data keys robustly
   const normalizedSubjectId = subjectId === "social-science" ? "social" : subjectId === "social" ? "social" : subjectId;
@@ -35,26 +39,22 @@ export default function MindMapSimulationTab({
   const [activeItem, setActiveItem] = useState<"mindmap" | "simulation">("mindmap");
   const [selectedNode, setSelectedNode] = useState<MindMapNode | null>(null);
 
-  // Auto reset states when subject changes or chapter changes
-  useEffect(() => {
-    if (availableChapters && availableChapters.length > 0) {
-      const firstChap = availableChapters[0];
-      setSelectedChapterId(firstChap.id);
-      setSelectedNode(firstChap.mindMap.rootNode);
-    }
-  }, [subjectId]);
+  // Use dynamic chapter resolution
+  const activeChapterId = propChapterId || selectedChapterId;
+  const currentChapter = getOrCreateChapterStructure(normalizedSubjectId, activeChapterId, selectedChapterTitle || "");
+  const mindMapData = currentChapter?.mindMap;
 
-  // Handle chapter changes
+  // Auto reset states when current chapter changes
+  useEffect(() => {
+    if (currentChapter && currentChapter.mindMap) {
+      setSelectedNode(currentChapter.mindMap.rootNode);
+    }
+  }, [currentChapter]);
+
+  // Handle chapter changes (fallback if manual picker is visible)
   const handleChapterSelect = (chapterId: string) => {
     setSelectedChapterId(chapterId);
-    const chap = availableChapters.find(c => c.id === chapterId);
-    if (chap) {
-      setSelectedNode(chap.mindMap.rootNode);
-    }
   };
-
-  const currentChapter = availableChapters.find(c => c.id === selectedChapterId) || availableChapters[0];
-  const mindMapData = currentChapter?.mindMap;
 
   return (
     <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4 sm:p-6 md:p-8 space-y-6" id="mindmap-sim-master-panel">
@@ -66,7 +66,7 @@ export default function MindMapSimulationTab({
             डिजिटल प्रयोगात्मक अधिगम (NEP Simulation Labs)
           </span>
           <h3 className="text-2xl font-black text-slate-800 mt-2 flex items-center gap-2">
-            🧠 अध्याय-वार माइंड मैप एवं सिमुलेशन लैब
+            🧠 {currentChapter?.title || "अध्याय"} माइंड मैप एवं सिमुलेशन लैब
           </h3>
           <p className="text-xs sm:text-sm text-slate-600 mt-1 leading-relaxed">
             कठिन अध्यायों को रंगीन ग्राफिक्स में समझें और जीवंत प्रयोगों के माध्यम से सिद्धान्तों का स्वयं सत्यापन करें।
@@ -101,32 +101,34 @@ export default function MindMapSimulationTab({
         </div>
       </div>
 
-      {/* Chapter Picker Row Tabs */}
-      <div className="space-y-2">
-        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
-          अध्याय चयन करें (Select Chapter):
-        </span>
-        
-        <div className="flex flex-wrap gap-2.5">
-          {availableChapters.map((chap) => {
-            const isSelected = chap.id === selectedChapterId;
-            return (
-              <button
-                key={chap.id}
-                onClick={() => handleChapterSelect(chap.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-black transition-all shadow-sm ${
-                  isSelected 
-                    ? "bg-amber-600 border-amber-600 text-white font-extrabold scale-102" 
-                    : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
-                }`}
-              >
-                <span className="text-sm shrink-0">{chap.icon}</span>
-                <span>{chap.title}</span>
-              </button>
-            );
-          })}
+      {/* Chapter Picker Row Tabs (Only shown if viewing general or fallback context) */}
+      {!propChapterId && (
+        <div className="space-y-2">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
+            अध्याय चयन करें (Select Chapter):
+          </span>
+          
+          <div className="flex flex-wrap gap-2.5">
+            {availableChapters.map((chap) => {
+              const isSelected = chap.id === selectedChapterId;
+              return (
+                <button
+                  key={chap.id}
+                  onClick={() => handleChapterSelect(chap.id)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-black transition-all shadow-sm ${
+                    isSelected 
+                      ? "bg-amber-600 border-amber-600 text-white font-extrabold scale-102" 
+                      : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
+                  }`}
+                >
+                  <span className="text-sm shrink-0">{chap.icon}</span>
+                  <span>{chap.title}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* View Content based on selection */}
       {activeItem === "mindmap" ? (

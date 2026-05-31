@@ -1,9 +1,9 @@
 import React from "react";
-import { BookOpen, Users, Lock, Unlock, Sliders, Home, Tv } from "lucide-react";
+import { BookOpen, Users, Lock, Unlock, Sliders, Home, Tv, Headphones } from "lucide-react";
 
 interface HeaderProps {
-  activeTab: "home" | "signLanguage" | "dev" | "admin";
-  setActiveTab: (tab: "home" | "signLanguage" | "dev" | "admin") => void;
+  activeTab: "home" | "signLanguage" | "audiobook" | "dev" | "admin";
+  setActiveTab: (tab: "home" | "signLanguage" | "audiobook" | "dev" | "admin") => void;
   isAdminLocked: boolean;
 }
 
@@ -61,6 +61,19 @@ export default function Header({
             >
               <Tv className="w-4 h-4" />
               <span>सांकेतिक भाषा</span>
+            </button>
+
+            <button
+              id="nav-audiobook"
+              onClick={() => setActiveTab("audiobook")}
+              className={`flex items-center gap-1 md:gap-2 px-3 py-2 rounded-lg font-bold transition-all duration-200 text-xs md:text-sm ${
+                activeTab === "audiobook"
+                  ? "bg-white text-indigo-900 shadow-md"
+                  : "text-white/95 hover:bg-white/10"
+              }`}
+            >
+              <Headphones className="w-4 h-4" />
+              <span>ऑडियोबुक</span>
             </button>
 
             <button

@@ -85,31 +85,50 @@ function getEmbedUrl(url: string): string {
 interface SubjectContentProps {
   subject: Subject;
   fontSizeClass: string;
+  initialChapterId?: string | null;
+  initialTab?: "video" | "notes" | "quiz" | "mindmap_sim" | null;
+  onClearedInitialParams?: () => void;
 }
 
 export default function SubjectContent({
   subject,
   fontSizeClass,
+  initialChapterId,
+  initialTab,
+  onClearedInitialParams,
 }: SubjectContentProps) {
   const [activeTab, setActiveTab] = useState<"video" | "notes" | "quiz" | "mindmap_sim">("video");
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
-  const [selectedChapterId, setSelectedChapterId] = useState<string>("all");
+  const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   // Auto-set the first video as selected when subject or videos list changes
   useEffect(() => {
-    setSelectedChapterId("all");
+    if (initialChapterId) {
+      setSelectedChapterId(initialChapterId);
+    } else {
+      setSelectedChapterId(null);
+    }
+
     if (subject.videos && subject.videos.length > 0) {
       setSelectedVideo(subject.videos[0]);
     } else {
       setSelectedVideo(null);
     }
-    // Default to video tab on subject change
-    setActiveTab("video");
-  }, [subject]);
 
-  const selectedChapterObj = subject.notes.find(n => n.id === selectedChapterId);
-  const displayedVideos = selectedChapterId === "all"
+    if (initialTab) {
+      setActiveTab(initialTab);
+    } else {
+      setActiveTab("video");
+    }
+
+    if ((initialChapterId || initialTab) && onClearedInitialParams) {
+      onClearedInitialParams();
+    }
+  }, [subject, initialChapterId, initialTab]);
+
+  const selectedChapterObj = selectedChapterId ? subject.notes.find(n => n.id === selectedChapterId) : null;
+  const displayedVideos = !selectedChapterId || selectedChapterId === "all"
     ? subject.videos
     : subject.videos.filter(vid => {
         if (!selectedChapterObj) return false;
@@ -197,62 +216,159 @@ export default function SubjectContent({
         </div>
       </div>
 
-      {/* THREE TABS NAVIGATOR: "वीडियो", "एनसीईआरटी पुस्तकें", "क्विज़" */}
-      <div className="flex border-b-2 border-slate-100 mb-6 font-bold" id="subject-tabs-container">
-        
-        <button
-          onClick={() => setActiveTab("video")}
-          className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 py-3 px-4 sm:px-8 border-b-4 text-[11px] sm:text-base transition-all ${
-            activeTab === "video"
-              ? "border-amber-500 text-amber-700 bg-amber-50/40"
-              : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50"
-          }`}
-          id="tab-btn-video"
-        >
-          <VideoIcon className={`w-4 h-4 sm:w-5 sm:h-5 ${activeTab === "video" ? "text-amber-600" : ""}`} />
-          <span>वीडियो व्याख्यान ({subject.videos.length})</span>
-        </button>
+      {/* Dynamic Conditional view: Chapter block menu OR Tab Content */}
+      {!selectedChapterId ? (
+        <div id="chapter-selection-grid-view" className="space-y-6 animate-fade-in">
+          <div className="flex items-center justify-between border-b pb-3 border-slate-150">
+            <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
+              <span className="p-2 bg-gradient-to-r from-amber-500 to-orange-600 rounded-xl text-white">📖</span>
+              <span>अध्याय चयन सूची (Select Chapter Block)</span>
+            </h3>
+            <span className="text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full font-black">
+              कुल {subject.notes.filter(n => n.id !== "m-full" && n.id !== "s-full" && !n.id.includes("full")).length} अध्याय
+            </span>
+          </div>
 
-        <button
-          onClick={() => setActiveTab("notes")}
-          className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 py-3 px-4 sm:px-8 border-b-4 text-[11px] sm:text-base transition-all ${
-            activeTab === "notes"
-              ? "border-amber-600 text-amber-800 bg-amber-50/40"
-              : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50"
-          }`}
-          id="tab-btn-notes"
-        >
-          <FileText className={`w-4 h-4 sm:w-5 sm:h-5 ${activeTab === "notes" ? "text-amber-600" : ""}`} />
-          <span>एनसीईआरटी पुस्तकें / PDF</span>
-        </button>
+          <p className="text-xs sm:text-sm font-bold text-slate-500 leading-relaxed">
+            कृपया नीचे दिए गए अध्यायों में से किसी एक ब्लॉक का चयन करें। चयन करने के पश्चात उस अध्याय से संबंधित सभी वीडियो व्याख्यान, विषय पुस्तकें, माइंड मैप, विज्ञान प्रयोगशाला सिमुलेशन और स्व-मूल्यांकन क्विज़ अपने आप सक्रिय हो जाएंगे:
+          </p>
 
-        <button
-          onClick={() => setActiveTab("quiz")}
-          className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 py-3 px-4 sm:px-8 border-b-4 text-[11px] sm:text-base transition-all ${
-            activeTab === "quiz"
-              ? "border-rose-600 text-rose-700 bg-rose-50/40"
-              : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50"
-          }`}
-          id="tab-btn-quiz"
-        >
-          <HelpCircle className={`w-4 h-4 sm:w-5 sm:h-5 ${activeTab === "quiz" ? "text-rose-600" : ""}`} />
-          <span>स्व-मूल्यांकन क्विज़</span>
-        </button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 pt-2">
+            {subject.notes
+              .filter(n => n.id !== "m-full" && n.id !== "s-full" && !n.id.includes("full"))
+              .map((chap, idx) => {
+                const getChapterIcon = () => {
+                  if (subject.id === "math") return "📐";
+                  if (subject.id === "science") return "🧪";
+                  if (subject.id.includes("social") || subject.id === "social") return "🌍";
+                  return "📝";
+                };
 
-        <button
-          onClick={() => setActiveTab("mindmap_sim")}
-          className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 py-3 px-4 sm:px-8 border-b-4 text-[11px] sm:text-base transition-all ${
-            activeTab === "mindmap_sim"
-              ? "border-purple-600 text-purple-700 bg-purple-50/40 font-bold"
-              : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50"
-          }`}
-          id="tab-btn-mindmap_sim"
-        >
-          <GitFork className={`w-4 h-4 sm:w-5 sm:h-5 ${activeTab === "mindmap_sim" ? "text-purple-600 animate-pulse" : ""}`} />
-          <span>माइंड मैप & सिमुलेशन</span>
-        </button>
+                return (
+                  <div
+                    key={chap.id}
+                    onClick={() => {
+                      setSelectedChapterId(chap.id);
+                    }}
+                    className="bg-gradient-to-br from-white to-slate-50 border-2 border-slate-200 hover:border-amber-400 hover:shadow-xl rounded-2xl p-5 cursor-pointer group transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden flex flex-col justify-between"
+                  >
+                    <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-15 transition-opacity text-5xl">
+                      {getChapterIcon()}
+                    </div>
 
-      </div>
+                    <div className="space-y-4">
+                      {/* Chapter badge */}
+                      <span className="inline-block bg-amber-50 text-amber-700 border border-amber-100 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
+                        अध्याय {idx + 1}
+                      </span>
+
+                      <h4 className="text-base font-black text-slate-900 group-hover:text-amber-700 line-clamp-2 leading-snug transition-colors">
+                        {chap.title}
+                      </h4>
+
+                      <div className="pt-3 border-t border-slate-100 flex flex-wrap gap-1.5">
+                        <span className="text-[10px] bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded font-black">
+                          🎥 वीडियो
+                        </span>
+                        <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded font-black">
+                          📖 नोट्स/पुस्तक
+                        </span>
+                        <span className="text-[10px] bg-purple-50 text-purple-700 border border-purple-100 px-2 py-0.5 rounded font-black">
+                          🧠 माइंड मैप
+                        </span>
+                        <span className="text-[10px] bg-rose-50 text-rose-700 border border-rose-100 px-2 py-0.5 rounded font-black">
+                          ✏️ क्विज़
+                        </span>
+                      </div>
+
+                      <div className="text-right pt-2">
+                        <span className="inline-flex items-center gap-1 text-xs font-black text-amber-600 group-hover:translate-x-1 duration-200 transition-transform">
+                          सीखना आरंभ करें ➜
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Back to chapters Breadcrumb / Active Header bar */}
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-amber-5/20 border border-amber-100 rounded-2xl select-none">
+            <button
+              onClick={() => setSelectedChapterId(null)}
+              className="px-4 py-2.5 bg-white text-slate-700 border-2 border-slate-200 rounded-xl hover:bg-slate-50 hover:border-amber-400 hover:text-amber-700 font-extrabold text-xs sm:text-xs flex items-center gap-2 shadow-sm transition-all duration-250 group cursor-pointer active:scale-95"
+            >
+              <span>⬅️ सभी अध्यायों की सूची पर वापस जाएँ</span>
+            </button>
+            <div className="flex items-center gap-2">
+              <span className="text-xs bg-amber-100 text-amber-800 border border-amber-200 px-3 py-1 rounded-full font-black text-center shrink-0">
+                चयनित अध्याय :
+              </span>
+              <span className="text-xs sm:text-sm font-black text-slate-800 line-clamp-1">
+                {selectedChapterObj?.title}
+              </span>
+            </div>
+          </div>
+
+          {/* THREE TABS NAVIGATOR: "वीडियो", "एनसीईआरटी पुस्तकें", "क्विज़" (Visible only after a chapter selection) */}
+          <div className="flex border-b-2 border-slate-100 mb-6 font-bold" id="subject-tabs-container">
+            
+            <button
+              onClick={() => setActiveTab("video")}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 py-3 px-4 sm:px-8 border-b-4 text-[11px] sm:text-base transition-all ${
+                activeTab === "video"
+                  ? "border-amber-500 text-amber-700 bg-amber-50/40"
+                  : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+              }`}
+              id="tab-btn-video"
+            >
+              <VideoIcon className={`w-4 h-4 sm:w-5 sm:h-5 ${activeTab === "video" ? "text-amber-600" : ""}`} />
+              <span>वीडियो व्याख्यान ({displayedVideos.length})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("notes")}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 py-3 px-4 sm:px-8 border-b-4 text-[11px] sm:text-base transition-all ${
+                activeTab === "notes"
+                  ? "border-amber-600 text-amber-800 bg-amber-50/40"
+                  : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+              }`}
+              id="tab-btn-notes"
+            >
+              <FileText className={`w-4 h-4 sm:w-5 sm:h-5 ${activeTab === "notes" ? "text-amber-600" : ""}`} />
+              <span>एनसीईआरटी पुस्तकें / PDF</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("quiz")}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 py-3 px-4 sm:px-8 border-b-4 text-[11px] sm:text-base transition-all ${
+                activeTab === "quiz"
+                  ? "border-rose-600 text-rose-700 bg-rose-50/40"
+                  : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+              }`}
+              id="tab-btn-quiz"
+            >
+              <HelpCircle className={`w-4 h-4 sm:w-5 sm:h-5 ${activeTab === "quiz" ? "text-rose-600" : ""}`} />
+              <span>स्व-मूल्यांकन क्विज़</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("mindmap_sim")}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 py-3 px-4 sm:px-8 border-b-4 text-[11px] sm:text-base transition-all ${
+                activeTab === "mindmap_sim"
+                  ? "border-purple-600 text-purple-700 bg-purple-50/40 font-bold"
+                  : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+              }`}
+              id="tab-btn-mindmap_sim"
+            >
+              <GitFork className={`w-4 h-4 sm:w-5 sm:h-5 ${activeTab === "mindmap_sim" ? "text-purple-600 animate-pulse" : ""}`} />
+              <span>माइंड मैप & सिमुलेशन</span>
+            </button>
+
+          </div>
+
 
       {/* TAB CONTENTS */}
       <div className="min-h-[400px]">
@@ -553,11 +669,15 @@ export default function SubjectContent({
             <MindMapSimulationTab
               subjectId={subject.id}
               fontSizeClass={fontSizeClass}
+              selectedChapterId={selectedChapterId}
+              selectedChapterTitle={selectedChapterObj?.title}
             />
           </div>
         )}
 
       </div>
+      </>
+      )}
     </div>
   );
 }
