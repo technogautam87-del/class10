@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Catch-all safety net
+    match /{document=**} {
+      allow read, write: if true;
+    }
+
+    // Rules for subjects
+    match /subjects/{subjectId} {
+      allow read: if true;
+      allow write: if request.resource.data.id is string
+                  && request.resource.data.name is string;
+    }
+
+    // Rules for team members
+    match /team/{memberId} {
+      allow read: if true;
+      allow write: if request.resource.data.id is string
+                  && request.resource.data.name is string;
+    }
+
+    // Rules for flashcards
+    match /flashcards/{flashcardId} {
+      allow read: if true;
+      allow write: if request.resource.data.id is string
+                  && request.resource.data.question is string;
+    }
+
+    // Rules for admin config settings
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}

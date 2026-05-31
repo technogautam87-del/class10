@@ -20,6 +20,10 @@ import {
 
 import { Sparkles, ArrowLeft, BookOpen, GraduationCap, ChevronRight, Share2, Heart } from "lucide-react";
 
+// Firebase imports for real-time cloud multi-user sync
+import { collection, doc, setDoc, deleteDoc, getDocs, onSnapshot } from "firebase/firestore";
+import { db, handleFirestoreError, OperationType } from "./lib/firebase";
+
 export default function App() {
   // --- STATE PERSISTENCE ---
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -34,69 +38,200 @@ export default function App() {
   // Accessibility Font Scale: normal (16px), large (20px), xlarge (24px)
   const [fontSizeScale, setFontSizeScale] = useState<"normal" | "large" | "xlarge">("large");
 
-  // Load state from LocalStorage on mount
+  // Load state from Firestore with client-side reactive subscription listeners
   useEffect(() => {
+    // 1. Set local localStorage cache for instant UI paint before Firestore handshake completes
     try {
       const storedSubjects = localStorage.getItem("c10_subjects");
-      if (storedSubjects) {
-        setSubjects(JSON.parse(storedSubjects));
-      } else {
-        setSubjects(INITIAL_SUBJECTS);
-      }
+      if (storedSubjects) setSubjects(JSON.parse(storedSubjects));
+      else setSubjects(INITIAL_SUBJECTS);
 
       const storedTeam = localStorage.getItem("c10_team");
-      if (storedTeam) {
-        setTeam(JSON.parse(storedTeam));
-      } else {
-        setTeam(INITIAL_TEAM);
-      }
+      if (storedTeam) setTeam(JSON.parse(storedTeam));
+      else setTeam(INITIAL_TEAM);
 
       const storedFlashcards = localStorage.getItem("c10_flashcards");
-      if (storedFlashcards) {
-        setFlashcards(JSON.parse(storedFlashcards));
-      } else {
-        setFlashcards(INITIAL_FLASHCARDS);
-      }
+      if (storedFlashcards) setFlashcards(JSON.parse(storedFlashcards));
+      else setFlashcards(INITIAL_FLASHCARDS);
 
       const storedAdmin = localStorage.getItem("c10_admin_config");
-      if (storedAdmin) {
-        setAdminConfig(JSON.parse(storedAdmin));
-      } else {
-        setAdminConfig(INITIAL_ADMIN);
-      }
+      if (storedAdmin) setAdminConfig(JSON.parse(storedAdmin));
+      else setAdminConfig(INITIAL_ADMIN);
 
       const storedFont = localStorage.getItem("c10_font_scale");
       if (storedFont) {
         setFontSizeScale(storedFont as any);
       }
     } catch (e) {
-      console.error("Local storage load failed, using fallback initial mock datasets", e);
-      setSubjects(INITIAL_SUBJECTS);
-      setTeam(INITIAL_TEAM);
-      setFlashcards(INITIAL_FLASHCARDS);
-      setAdminConfig(INITIAL_ADMIN);
+      console.error("Local storage load failed", e);
     }
+
+    // 2. Setup real-time cloud subscription sync listeners with Firestore
+    const unsubSubjects = onSnapshot(collection(db, "subjects"), async (snapshot) => {
+      if (snapshot.empty) {
+        console.log("Seeding subjects to cloud-hosted database...");
+        try {
+          for (const s of INITIAL_SUBJECTS) {
+            await setDoc(doc(db, "subjects", s.id), s);
+          }
+        } catch (e) {
+          console.error("Failed to seed subjects on first launch:", e);
+        }
+      } else {
+        const list: Subject[] = [];
+        snapshot.forEach((doc) => {
+          list.push(doc.data() as Subject);
+        });
+        const orderMap = { "math": 0, "science": 1, "sst": 2, "hindi": 3, "english": 4, "sanskrit": 5 };
+        list.sort((a, b) => (orderMap[a.id as keyof typeof orderMap] ?? 99) - (orderMap[b.id as keyof typeof orderMap] ?? 99));
+        setSubjects(list);
+        localStorage.setItem("c10_subjects", JSON.stringify(list));
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "subjects");
+    });
+
+    const unsubTeam = onSnapshot(collection(db, "team"), async (snapshot) => {
+      if (snapshot.empty) {
+        console.log("Seeding team to cloud-hosted database...");
+        try {
+          for (const t of INITIAL_TEAM) {
+            await setDoc(doc(db, "team", t.id), t);
+          }
+        } catch (e) {
+          console.error("Failed to seed team:", e);
+        }
+      } else {
+        const list: TeamMember[] = [];
+        snapshot.forEach((doc) => {
+          list.push(doc.data() as TeamMember);
+        });
+        setTeam(list);
+        localStorage.setItem("c10_team", JSON.stringify(list));
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "team");
+    });
+
+    const unsubFlashcards = onSnapshot(collection(db, "flashcards"), async (snapshot) => {
+      if (snapshot.empty) {
+        console.log("Seeding flashcards to cloud-hosted database...");
+        try {
+          for (const f of INITIAL_FLASHCARDS) {
+            await setDoc(doc(db, "flashcards", f.id), f);
+          }
+        } catch (e) {
+          console.error("Failed to seed flashcards:", e);
+        }
+      } else {
+        const list: Flashcard[] = [];
+        snapshot.forEach((doc) => {
+          list.push(doc.data() as Flashcard);
+        });
+        setFlashcards(list);
+        localStorage.setItem("c10_flashcards", JSON.stringify(list));
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "flashcards");
+    });
+
+    const unsubAdmin = onSnapshot(doc(db, "settings", "admin"), async (docSnap) => {
+      if (!docSnap.exists()) {
+        console.log("Seeding admin accounts to cloud-hosted database...");
+        try {
+          await setDoc(doc(db, "settings", "admin"), INITIAL_ADMIN);
+        } catch (e) {
+          console.error("Failed to seed admin configuration:", e);
+        }
+      } else {
+        const cfg = docSnap.data() as AdminConfig;
+        setAdminConfig(cfg);
+        localStorage.setItem("c10_admin_config", JSON.stringify(cfg));
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "settings/admin");
+    });
+
+    // Clean up subscription handles on unmount
+    return () => {
+      unsubSubjects();
+      unsubTeam();
+      unsubFlashcards();
+      unsubAdmin();
+    };
   }, []);
 
-  // --- SAVE HOOKS ---
-  const handleUpdateSubjects = (newSubjects: Subject[]) => {
+  // --- SAVE HOOKS CORRESPONDING TO THE CLOUD DATABASE ---
+  const handleUpdateSubjects = async (newSubjects: Subject[]) => {
     setSubjects(newSubjects);
     localStorage.setItem("c10_subjects", JSON.stringify(newSubjects));
+    try {
+      for (const s of newSubjects) {
+        await setDoc(doc(db, "subjects", s.id), s);
+      }
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, "subjects");
+    }
   };
 
-  const handleUpdateTeam = (newTeam: TeamMember[]) => {
+  const handleUpdateTeam = async (newTeam: TeamMember[]) => {
     setTeam(newTeam);
     localStorage.setItem("c10_team", JSON.stringify(newTeam));
+    try {
+      // Fetch currently saved IDs from Firestore to look for deleted members
+      const currentSnap = await getDocs(collection(db, "team"));
+      const currentIds = currentSnap.docs.map(doc => doc.id);
+      const newIds = newTeam.map(m => m.id);
+
+      // Delete the obsolete team documents that were removed by admin
+      for (const id of currentIds) {
+        if (!newIds.includes(id)) {
+          await deleteDoc(doc(db, "team", id));
+        }
+      }
+
+      // Overwrite/Write all team profiles to cloud storage
+      for (const m of newTeam) {
+        await setDoc(doc(db, "team", m.id), m);
+      }
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, "team");
+    }
   };
 
-  const handleUpdateFlashcards = (newCards: Flashcard[]) => {
+  const handleUpdateFlashcards = async (newCards: Flashcard[]) => {
     setFlashcards(newCards);
     localStorage.setItem("c10_flashcards", JSON.stringify(newCards));
+    try {
+      // Fetch currently saved IDs from Firestore to look for deleted flashcards
+      const currentSnap = await getDocs(collection(db, "flashcards"));
+      const currentIds = currentSnap.docs.map(doc => doc.id);
+      const newIds = newCards.map(c => c.id);
+
+      // Delete any obsolete cards
+      for (const id of currentIds) {
+        if (!newIds.includes(id)) {
+          await deleteDoc(doc(db, "flashcards", id));
+        }
+      }
+
+      // Save each flashcard to Firestore
+      for (const c of newCards) {
+        await setDoc(doc(db, "flashcards", c.id), c);
+      }
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, "flashcards");
+    }
   };
 
-  const handleUpdateAdminConfig = (newConfig: AdminConfig) => {
+  const handleUpdateAdminConfig = async (newConfig: AdminConfig) => {
     setAdminConfig(newConfig);
     localStorage.setItem("c10_admin_config", JSON.stringify(newConfig));
+    try {
+      await setDoc(doc(db, "settings", "admin"), newConfig);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, "settings/admin");
+    }
   };
 
   const handleSetFontSizeScale = (scale: "normal" | "large" | "xlarge") => {
@@ -141,8 +276,6 @@ export default function App() {
           // If we navigate to another section, we can keep selectedSubjectId or clear it based on preference.
         }}
         isAdminLocked={adminConfig.isLocked}
-        fontSizeScale={fontSizeScale}
-        setFontSizeScale={handleSetFontSizeScale}
       />
 
       {/* Main Container */}

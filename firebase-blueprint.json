@@ -1,0 +1,80 @@
+{
+  "entities": {
+    "Subject": {
+      "title": "Subject",
+      "description": "Educational subject with videos, notes, deep quiz database, mindmaps, and interactive live simulations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "englishName": { "type": "string" },
+        "icon": { "type": "string" },
+        "color": { "type": "string" },
+        "gradient": { "type": "string" },
+        "textColor": { "type": "string" },
+        "description": { "type": "string" },
+        "videos": { "type": "array" },
+        "notes": { "type": "array" },
+        "quiz": { "type": "array" },
+        "mindMaps": { "type": "array" },
+        "simulations": { "type": "array" }
+      },
+      "required": ["id", "name", "englishName", "videos", "notes", "quiz"]
+    },
+    "TeamMember": {
+      "title": "Team Member",
+      "description": "Developer profile of secondary app developers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "bio": { "type": "string" },
+        "email": { "type": "string" }
+      },
+      "required": ["id", "name", "role", "photoUrl", "bio"]
+    },
+    "Flashcard": {
+      "title": "Flashcard",
+      "description": "Interactive study card for rote learning with a question and answer",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "question": { "type": "string" },
+        "answer": { "type": "string" },
+        "subject": { "type": "string" }
+      },
+      "required": ["id", "question", "answer", "subject"]
+    },
+    "AdminConfig": {
+      "title": "Admin Configuration",
+      "description": "Administrative credential hashes and configuration",
+      "type": "object",
+      "properties": {
+        "username": { "type": "string" },
+        "passwordHash": { "type": "string" },
+        "isLocked": { "type": "boolean" }
+      },
+      "required": ["username", "passwordHash", "isLocked"]
+    }
+  },
+  "firestore": {
+    "/subjects/{subjectId}": {
+      "schema": "Subject",
+      "description": "Subject resource collection storing curated curricula assets"
+    },
+    "/team/{memberId}": {
+      "schema": "TeamMember",
+      "description": "Roster of developing and contributing student team members"
+    },
+    "/flashcards/{flashcardId}": {
+      "schema": "Flashcard",
+      "description": "Rote-memorization flashcards spanning boards syllabi"
+    },
+    "/settings/{settingId}": {
+      "schema": "AdminConfig",
+      "description": "Global admin panel configurations and credentials"
+    }
+  }
+}
