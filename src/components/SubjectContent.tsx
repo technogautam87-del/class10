@@ -17,43 +17,68 @@ import {
   GitFork
 } from "lucide-react";
 
-// Helper function to safely format manually updated YouTube URLs to embed URLs for iframes
+// Helper function to detect if URL is YouTube
+function isYouTubeUrl(url: string): boolean {
+  if (!url) return false;
+  const cleaned = url.trim().toLowerCase();
+  return (
+    cleaned.includes("youtube.com") ||
+    cleaned.includes("youtu.be") ||
+    cleaned.includes("y2u.be")
+  );
+}
+
+// Helper function to detect if URL is direct video file
+function isDirectVideoUrl(url: string): boolean {
+  if (!url) return false;
+  const cleaned = url.trim().toLowerCase();
+  return (
+    cleaned.endsWith(".mp4") ||
+    cleaned.endsWith(".webm") ||
+    cleaned.endsWith(".ogg") ||
+    cleaned.includes(".mp4?") ||
+    cleaned.includes(".webm?") ||
+    cleaned.includes(".ogg?")
+  );
+}
+
+// Helper function to safely format manually updated YouTube URLs or Google Drive URLs to embed URLs for iframes
 function getEmbedUrl(url: string): string {
   if (!url) return "";
   let cleaned = url.trim();
-  if (cleaned.includes("/embed/")) {
-    return cleaned;
-  }
-  if (cleaned.includes("youtube.com/watch")) {
-    try {
-      const urlObj = new URL(cleaned);
-      const videoId = urlObj.searchParams.get("v");
-      if (videoId) return `https://www.youtube.com/embed/${videoId}`;
-    } catch (e) {
-      const match = cleaned.match(/[?&]v=([^&#]+)/);
-      if (match && match[1]) return `https://www.youtube.com/embed/${match[1]}`;
+
+  // Convert Google Drive links so they embed without Refused to Connect
+  if (cleaned.includes("drive.google.com")) {
+    if (cleaned.includes("/view")) {
+      return cleaned.replace(/\/view.*/, "/preview");
     }
-  }
-  if (cleaned.includes("youtu.be/")) {
-    try {
-      const urlObj = new URL(cleaned);
-      const videoId = urlObj.pathname.substring(1);
-      if (videoId) return `https://www.youtube.com/embed/${videoId}`;
-    } catch (e) {
-      const parts = cleaned.split("youtu.be/");
-      if (parts && parts[1]) {
-        const id = parts[1].split(/[?#]/)[0];
-        if (id) return `https://www.youtube.com/embed/${id}`;
+    if (cleaned.includes("/edit")) {
+      return cleaned.replace(/\/edit.*/, "/preview");
+    }
+    if (cleaned.includes("open?id=")) {
+      try {
+        const urlObj = new URL(cleaned);
+        const folderId = urlObj.searchParams.get("id");
+        if (folderId) return `https://drive.google.com/file/d/${folderId}/preview`;
+      } catch (e) {
+        const match = cleaned.match(/id=([^&#]+)/);
+        if (match && match[1]) return `https://drive.google.com/file/d/${match[1]}/preview`;
       }
     }
   }
-  if (cleaned.includes("/shorts/")) {
-    const parts = cleaned.split("/shorts/");
-    if (parts && parts[1]) {
-      const id = parts[1].split(/[?#]/)[0];
-      if (id) return `https://www.youtube.com/embed/${id}`;
-    }
+
+  if (cleaned.includes("/embed/")) {
+    return cleaned;
   }
+
+  // Robust YouTube URL ID Match including mobile, short, live, watch, etc.
+  const ytRegExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|shorts\/|live\/)([^#\&\?]*).*/;
+  const match = cleaned.match(ytRegExp);
+
+  if (match && match[2] && match[2].length === 11) {
+    return `https://www.youtube.com/embed/${match[2]}`;
+  }
+
   return cleaned;
 }
 
@@ -274,13 +299,46 @@ export default function SubjectContent({
                 {selectedVideo ? (
                   <div className="bg-slate-900 rounded-3xl overflow-hidden shadow-2xl p-2.5 border-2 border-amber-100 flex flex-col justify-between">
                     <div className="aspect-video w-full rounded-2xl overflow-hidden relative bg-black">
-                      <iframe
-                        src={getEmbedUrl(selectedVideo.url)}
-                        title={selectedVideo.title}
-                        className="w-full h-full"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                      ></iframe>
+                      {isDirectVideoUrl(selectedVideo.url) ? (
+                        <video
+                          src={selectedVideo.url}
+                          controls
+                          className="w-full h-full rounded-2xl"
+                        />
+                      ) : isYouTubeUrl(selectedVideo.url) || selectedVideo.url.includes("drive.google.com") || selectedVideo.url.includes("/embed/") ? (
+                        <iframe
+                          src={getEmbedUrl(selectedVideo.url)}
+                          title={selectedVideo.title}
+                          className="w-full h-full"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        ></iframe>
+                      ) : (
+                        /* GORGEOUS DIRECT LINK PLAY BLOCK - EXCELLENT RESOLUTION FOR REFUSED TO CONNECT */
+                        <div className="w-full h-full bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 flex flex-col justify-center items-center text-center p-6 space-y-4">
+                          <div className="w-16 h-16 rounded-full bg-rose-600 flex items-center justify-center text-white text-3xl animate-pulse shadow-lg shadow-rose-950/50">
+                            ▶️
+                          </div>
+                          <div className="space-y-1 max-w-md px-4">
+                            <h4 className="text-sm sm:text-base font-black text-white">
+                              {selectedVideo.title}
+                            </h4>
+                            <p className="text-[11px] text-amber-200 font-bold leading-normal">
+                              यह वीडियो बाह्य स्रोत (External Source) से है। ब्राउज़र सुरक्षा नियमों के कारण इसे सीधे यहाँ चलाने की जगह सीधे नई विंडो में सुरक्षित रूप से खोला जाएगा।
+                            </p>
+                          </div>
+                          
+                          <a
+                            href={selectedVideo.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-yellow-400 hover:bg-yellow-500 text-slate-900 px-6 py-3 rounded-2xl text-xs font-black shadow-lg shadow-yellow-400/20 active:scale-95 transition-transform flex items-center gap-2"
+                          >
+                            <Youtube className="w-4 h-4 text-rose-600" />
+                            <span>अभी वीडियो चालू करें (Play Direct Link)</span>
+                          </a>
+                        </div>
+                      )}
                     </div>
                     
                     {/* Active video metadata */}
@@ -309,10 +367,10 @@ export default function SubjectContent({
                       <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700/60 mt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                         <div className="space-y-0.5 text-left">
                           <span className="text-[10px] font-black tracking-wider text-amber-400 uppercase block">
-                            यूट्यूब डायरेक्ट वीडियो एक्सेस
+                            डायरेक्ट वीडियो प्लेअर लिंक
                           </span>
                           <span className="text-xs text-slate-300 font-bold">
-                            क्या आप इस वीडियो को सीधे यूट्यूब वेबसाइट या ऐप में खोलना चाहते हैं?
+                            क्या आप इस लेक्चर को सीधे अपने फ़ोन/कंप्यूटर के मूल प्लेयर में देखना चाहते हैं?
                           </span>
                         </div>
                         <a
@@ -322,7 +380,7 @@ export default function SubjectContent({
                           className="w-full sm:w-auto bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs px-5 py-3 rounded-xl flex items-center justify-center gap-2 transition active:scale-95 shadow-md shadow-rose-950/20 shrink-0"
                         >
                           <Youtube className="w-4 h-4 text-white" />
-                          <span>यूट्यूब पर सीधे वीडियो खोलें</span>
+                          <span>यूट्यूब या सोर्स पर सीधे खोलें</span>
                         </a>
                       </div>
                     </div>
