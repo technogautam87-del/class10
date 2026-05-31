@@ -40,6 +40,9 @@ export default function App() {
 
   // Load state from Firestore with client-side reactive subscription listeners
   useEffect(() => {
+    // Dynamically enforce browser tab title
+    document.title = "कक्षा 10 लर्निंग प्लेटफ़ॉर्म";
+
     // 1. Set local localStorage cache for instant UI paint before Firestore handshake completes
     try {
       const storedSubjects = localStorage.getItem("c10_subjects");
