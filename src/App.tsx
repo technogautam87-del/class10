@@ -10,29 +10,32 @@ import SubjectContent from "./components/SubjectContent";
 import DeveloperTeam from "./components/DeveloperTeam";
 import AdminPanel from "./components/AdminPanel";
 
-import { Subject, TeamMember, Flashcard, AdminConfig } from "./types";
+import { Subject, TeamMember, Flashcard, AdminConfig, SignLanguageSubject } from "./types";
 import { 
   INITIAL_SUBJECTS, 
   INITIAL_TEAM, 
   INITIAL_FLASHCARDS, 
-  INITIAL_ADMIN 
+  INITIAL_ADMIN,
+  INITIAL_SIGN_LANGUAGE
 } from "./data/initialData";
 
-import { Sparkles, ArrowLeft, BookOpen, GraduationCap, ChevronRight, Share2, Heart } from "lucide-react";
+import { Sparkles, ArrowLeft, BookOpen, GraduationCap, ChevronRight, Share2, Heart, MessageSquare } from "lucide-react";
 
 // Firebase imports for real-time cloud multi-user sync
 import { collection, doc, setDoc, deleteDoc, getDocs, onSnapshot } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "./lib/firebase";
+import SignLanguageContent from "./components/SignLanguageContent";
 
 export default function App() {
   // --- STATE PERSISTENCE ---
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [signLanguageSubjects, setSignLanguageSubjects] = useState<SignLanguageSubject[]>([]);
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [adminConfig, setAdminConfig] = useState<AdminConfig>(INITIAL_ADMIN);
 
   // Layout navigation state
-  const [activeTab, setActiveTab] = useState<"home" | "dev" | "admin">("home");
+  const [activeTab, setActiveTab] = useState<"home" | "signLanguage" | "dev" | "admin">("home");
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
 
   // Accessibility Font Scale: normal (16px), large (20px), xlarge (24px)
@@ -48,6 +51,10 @@ export default function App() {
       const storedSubjects = localStorage.getItem("c10_subjects");
       if (storedSubjects) setSubjects(JSON.parse(storedSubjects));
       else setSubjects(INITIAL_SUBJECTS);
+
+      const storedSignLanguage = localStorage.getItem("c10_sign_language");
+      if (storedSignLanguage) setSignLanguageSubjects(JSON.parse(storedSignLanguage));
+      else setSignLanguageSubjects(INITIAL_SIGN_LANGUAGE);
 
       const storedTeam = localStorage.getItem("c10_team");
       if (storedTeam) setTeam(JSON.parse(storedTeam));
@@ -155,9 +162,32 @@ export default function App() {
       handleFirestoreError(error, OperationType.GET, "settings/admin");
     });
 
+    const unsubSignLanguage = onSnapshot(collection(db, "signLanguageSubjects"), async (snapshot) => {
+      if (snapshot.empty) {
+        console.log("Seeding sign language database...");
+        try {
+          for (const s of INITIAL_SIGN_LANGUAGE) {
+            await setDoc(doc(db, "signLanguageSubjects", s.id), s);
+          }
+        } catch (e) {
+          console.error("Failed to seed sign language database:", e);
+        }
+      } else {
+        const list: SignLanguageSubject[] = [];
+        snapshot.forEach((docSnap) => {
+          list.push(docSnap.data() as SignLanguageSubject);
+        });
+        setSignLanguageSubjects(list);
+        localStorage.setItem("c10_sign_language", JSON.stringify(list));
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "signLanguageSubjects");
+    });
+
     // Clean up subscription handles on unmount
     return () => {
       unsubSubjects();
+      unsubSignLanguage();
       unsubTeam();
       unsubFlashcards();
       unsubAdmin();
@@ -165,6 +195,29 @@ export default function App() {
   }, []);
 
   // --- SAVE HOOKS CORRESPONDING TO THE CLOUD DATABASE ---
+  const handleUpdateSignLanguage = async (newSL: SignLanguageSubject[]) => {
+    setSignLanguageSubjects(newSL);
+    localStorage.setItem("c10_sign_language", JSON.stringify(newSL));
+    try {
+      // Clean up deleted subjects
+      const currentSnap = await getDocs(collection(db, "signLanguageSubjects"));
+      const currentIds = currentSnap.docs.map(docSnap => docSnap.id);
+      const newIds = newSL.map(s => s.id);
+
+      for (const id of currentIds) {
+        if (!newIds.includes(id)) {
+          await deleteDoc(doc(db, "signLanguageSubjects", id));
+        }
+      }
+
+      for (const s of newSL) {
+        await setDoc(doc(db, "signLanguageSubjects", s.id), s);
+      }
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, "signLanguageSubjects");
+    }
+  };
+
   const handleUpdateSubjects = async (newSubjects: Subject[]) => {
     setSubjects(newSubjects);
     localStorage.setItem("c10_subjects", JSON.stringify(newSubjects));
@@ -336,6 +389,16 @@ export default function App() {
           </div>
         )}
 
+        {/* SIGN LANGUAGE DIGITAL LIBRARY TAB */}
+        {activeTab === "signLanguage" && (
+          <div className="animate-fade-in" id="sign-language-library-wrapper">
+            <SignLanguageContent
+              subjects={signLanguageSubjects}
+              fontSizeClass={getFontSizeClass()}
+            />
+          </div>
+        )}
+
         {/* DEVELOPER TEAM TAB */}
         {activeTab === "dev" && (
           <div className="animate-fade-in" id="developer-team-wrapper">
@@ -360,6 +423,8 @@ export default function App() {
               fontSizeClass={getFontSizeClass()}
               team={team}
               updateTeam={handleUpdateTeam}
+              signLanguageSubjects={signLanguageSubjects}
+              updateSignLanguage={handleUpdateSignLanguage}
             />
           </div>
         )}

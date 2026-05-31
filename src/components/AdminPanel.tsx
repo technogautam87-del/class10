@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Subject, Video, Note, QuizQuestion, AdminConfig, TeamMember } from "../types";
+import { Subject, Video, Note, QuizQuestion, AdminConfig, TeamMember, SignLanguageSubject } from "../types";
 import { 
   Lock, 
   Unlock, 
@@ -38,6 +38,8 @@ interface AdminPanelProps {
   fontSizeClass: string;
   team: TeamMember[];
   updateTeam: (newTeam: TeamMember[]) => void;
+  signLanguageSubjects: SignLanguageSubject[];
+  updateSignLanguage: (newSL: SignLanguageSubject[]) => void;
 }
 
 export default function AdminPanel({
@@ -48,11 +50,18 @@ export default function AdminPanel({
   fontSizeClass,
   team,
   updateTeam,
+  signLanguageSubjects,
+  updateSignLanguage,
 }: AdminPanelProps) {
   // Authentication Form States
   const [inputUsername, setInputUsername] = useState<string>("");
   const [inputPassword, setInputPassword] = useState<string>("");
   const [authError, setAuthError] = useState<string>("");
+
+  // Sign Language Manager States
+  const [editingSlSubjectId, setEditingSlSubjectId] = useState<string | null>(null);
+  const [editingSlChapterId, setEditingSlChapterId] = useState<string | null>(null);
+  const [editingSlTopicId, setEditingSlTopicId] = useState<string | null>(null);
 
   // New Credentials Form States
   const [newUsername, setNewUsername] = useState<string>("");
@@ -572,7 +581,7 @@ export default function AdminPanel({
             );
           })}
 
-          <div className="border-t border-slate-100 pt-3 mt-3">
+          <div className="border-t border-slate-100 pt-3 mt-3 space-y-2">
             <button
               onClick={() => {
                 setSelectedSubjectId("dev-team");
@@ -593,6 +602,32 @@ export default function AdminPanel({
               </div>
               <span className="text-[10px] bg-black/10 px-1.5 py-0.5 rounded">
                 {team.length} सदस्य
+              </span>
+            </button>
+
+            <button
+              onClick={() => {
+                setSelectedSubjectId("sign-language-manager");
+                setEditingVideoId(null);
+                setEditingNoteId(null);
+                setEditingQuizQId(null);
+                setEditingMemberId(null);
+                setEditingSlSubjectId(null);
+                setEditingSlChapterId(null);
+                setEditingSlTopicId(null);
+              }}
+              className={`w-full flex items-center justify-between p-3 rounded-2xl text-left font-black text-sm transition ${
+                selectedSubjectId === "sign-language-manager"
+                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-100"
+                  : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <VideoIcon className="w-4 h-4" />
+                <span>सांकेतिक भाषा संपादन</span>
+              </div>
+              <span className="text-[10px] bg-black/10 px-1.5 py-0.5 rounded font-black">
+                {signLanguageSubjects.length} विषय
               </span>
             </button>
           </div>
@@ -775,6 +810,241 @@ export default function AdminPanel({
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+        ) : selectedSubjectId === "sign-language-manager" ? (
+          <div className="lg:col-span-9 bg-white border border-slate-200 rounded-3xl p-6 shadow-xl space-y-6 animate-fade-in" id="sign-lang-workspace-pane">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-4">
+              <div>
+                <span className="text-xs font-bold text-emerald-600 block">सक्रिय नियंत्रण विभाग (Active Controller):</span>
+                <h3 className="text-xl font-black text-slate-900">
+                  सांकेतिक भाषा (Sign Language) पाठ्यक्रम प्रबंधक
+                </h3>
+                <p className="text-xs text-slate-500 font-bold mt-1">
+                  यहाँ से आप सांकेतिक विज्ञान, गणित और सामाजिक विज्ञान के अध्यायों तथा उनके यूट्यूब वीडियो लिंक जोड़ व बदल सकते हैं।
+                </p>
+              </div>
+            </div>
+
+            {/* List of current Sign Language Subjects */}
+            <div className="space-y-6">
+              {signLanguageSubjects.map((sub) => (
+                <div key={sub.id} className="border-2 border-emerald-100 p-5 rounded-2xl bg-emerald-50/20 space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-4 border-b border-emerald-100/50 pb-3">
+                    <div>
+                      <h4 className="text-base font-extrabold text-slate-800">
+                        {sub.name}
+                      </h4>
+                      <p className="text-xs text-slate-500 font-bold">{sub.description}</p>
+                    </div>
+                    
+                    <button
+                      onClick={() => {
+                        const title = prompt("अध्याय का शीर्षक दर्ज करें (उदा. अध्याय 3: धातु एवं अधातु):");
+                        if (title && title.trim()) {
+                          const updated = signLanguageSubjects.map(s => {
+                            if (s.id === sub.id) {
+                              return {
+                                ...s,
+                                chapters: [
+                                  ...(s.chapters || []),
+                                  { id: `ch-${Date.now()}`, title: title.trim(), topics: [] }
+                                ]
+                              };
+                            }
+                            return s;
+                          });
+                          updateSignLanguage(updated);
+                        }
+                      }}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold px-3 py-1.5 rounded-lg flex items-center gap-1 transition"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>नया अध्याय जोड़ें</span>
+                    </button>
+                  </div>
+
+                  {/* List of chapters in this subject */}
+                  <div className="space-y-4">
+                    {sub.chapters && sub.chapters.length > 0 ? (
+                      sub.chapters.map((ch) => (
+                        <div key={ch.id} className="bg-white border border-slate-200 p-4 rounded-xl space-y-3 shadow-sm">
+                          <div className="flex items-center justify-between gap-4 flex-wrap">
+                            <span className="text-xs font-black text-indigo-700 tracking-wider">
+                              {ch.title}
+                            </span>
+                            
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => {
+                                  const newTitle = prompt("नया अध्याय शीर्षक दर्ज करें:", ch.title);
+                                  if (newTitle && newTitle.trim() && newTitle !== ch.title) {
+                                    const updated = signLanguageSubjects.map(s => {
+                                      if (s.id === sub.id) {
+                                        return {
+                                          ...s,
+                                          chapters: s.chapters.map(c => c.id === ch.id ? { ...c, title: newTitle.trim() } : c)
+                                        };
+                                      }
+                                      return s;
+                                    });
+                                    updateSignLanguage(updated);
+                                  }
+                                }}
+                                className="text-indigo-600 hover:text-indigo-700 text-xs font-bold bg-indigo-50 px-2.5 py-1 rounded-lg"
+                                title="अध्याय शीर्षक संपादित करें"
+                              >
+                                शीर्षक बदलें
+                              </button>
+                              
+                              <button
+                                onClick={() => {
+                                  if (confirm("क्या आप वाकई इस अध्याय को डिलीट करना चाहते हैं?")) {
+                                    const updated = signLanguageSubjects.map(s => {
+                                      if (s.id === sub.id) {
+                                        return {
+                                          ...s,
+                                          chapters: s.chapters.filter(c => c.id !== ch.id)
+                                        };
+                                      }
+                                      return s;
+                                    });
+                                    updateSignLanguage(updated);
+                                  }
+                                }}
+                                className="text-red-600 hover:text-red-700 text-xs font-bold bg-red-50 px-2.5 py-1 rounded-lg"
+                                title="अध्याय हटाएं"
+                              >
+                                हटाएं
+                              </button>
+
+                              <button
+                                onClick={() => {
+                                  const topicTitle = prompt("यूट्यूब टॉपिक का नाम (उदा. रासायनिक समीकरण संतुलन विधि):");
+                                  const topicUrl = prompt("यूट्यूब वीडियो लिंक (YouTube URL) प्रदान करें (उदा. https://www.youtube.com/watch?v=XXXXX):");
+                                  if (topicTitle && topicTitle.trim() && topicUrl && topicUrl.trim()) {
+                                    const updated = signLanguageSubjects.map(s => {
+                                      if (s.id === sub.id) {
+                                        return {
+                                          ...s,
+                                          chapters: s.chapters.map(c => {
+                                            if (c.id === ch.id) {
+                                              return {
+                                                ...c,
+                                                topics: [
+                                                  ...(c.topics || []),
+                                                  { id: `tp-${Date.now()}`, title: topicTitle.trim(), youtubeUrl: topicUrl.trim() }
+                                                ]
+                                              };
+                                            }
+                                            return c;
+                                          })
+                                        };
+                                      }
+                                      return s;
+                                    });
+                                    updateSignLanguage(updated);
+                                  }
+                                }}
+                                className="bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-black px-2.5 py-1 rounded-lg flex items-center gap-1 transition shadow-sm"
+                              >
+                                <Plus className="w-3 h-3" />
+                                <span>नया टॉपिक जोड़ें</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* List of Topic Levels inside Chapter */}
+                          <div className="space-y-2 border-t border-slate-100/80 pt-2.5">
+                            {ch.topics && ch.topics.length > 0 ? (
+                              ch.topics.map((tp) => (
+                                <div key={tp.id} className="bg-slate-50 border border-slate-150 p-3 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                                  <div className="space-y-1">
+                                    <div className="font-extrabold text-slate-800">
+                                      {tp.title}
+                                    </div>
+                                    <div className="text-[10px] text-indigo-700 font-bold overflow-hidden text-ellipsis max-w-[280px] sm:max-w-[450px]">
+                                      यूट्यूब यूआरएल: <code className="bg-white px-1 block sm:inline-block border border-slate-200 mt-1 sm:mt-0 font-mono font-bold text-[9px] text-rose-600">{tp.youtubeUrl}</code>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                                    <button
+                                      onClick={() => {
+                                        const newTitle = prompt("नया टॉपिक नाम दर्ज करें:", tp.title);
+                                        const newUrl = prompt("नया यूट्यूब वीडियो लिंक दर्ज करें:", tp.youtubeUrl);
+                                        if (newTitle && newTitle.trim() && newUrl && newUrl.trim()) {
+                                          const updated = signLanguageSubjects.map(s => {
+                                            if (s.id === sub.id) {
+                                              return {
+                                                ...s,
+                                                chapters: s.chapters.map(c => {
+                                                  if (c.id === ch.id) {
+                                                    return {
+                                                      ...c,
+                                                      topics: c.topics.map(t => t.id === tp.id ? { ...t, title: newTitle.trim(), youtubeUrl: newUrl.trim() } : t)
+                                                    };
+                                                  }
+                                                  return c;
+                                                })
+                                              };
+                                            }
+                                            return s;
+                                          });
+                                          updateSignLanguage(updated);
+                                        }
+                                      }}
+                                      className="text-indigo-600 hover:text-indigo-800 font-semibold bg-indigo-100/60 hover:bg-indigo-100 px-2 py-1 rounded"
+                                    >
+                                      स्थान बदलें / एडिट करें
+                                    </button>
+
+                                    <button
+                                      onClick={() => {
+                                        if (confirm("क्या आप वाकई इस टॉपिक को डिलीट करना चाहते हैं?")) {
+                                          const updated = signLanguageSubjects.map(s => {
+                                            if (s.id === sub.id) {
+                                              return {
+                                                ...s,
+                                                chapters: s.chapters.map(c => {
+                                                  if (c.id === ch.id) {
+                                                    return {
+                                                      ...c,
+                                                      topics: c.topics.filter(t => t.id !== tp.id)
+                                                    };
+                                                  }
+                                                  return c;
+                                                })
+                                              };
+                                            }
+                                            return s;
+                                          });
+                                          updateSignLanguage(updated);
+                                        }
+                                      }}
+                                      className="text-red-700 hover:text-red-950 font-semibold bg-red-100 hover:bg-red-200 px-2 py-1 rounded"
+                                    >
+                                      हटाएं
+                                    </button>
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="text-[10px] text-slate-400 font-bold p-1">
+                                इस अध्याय के अंतर्गत कोई टॉपिक मौजूद नहीं है। "नया टॉपिक जोड़ें" बटन पर क्लिक करने का कष्ट करें।
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-xs text-slate-400 font-bold p-2 bg-white/50 border border-dashed rounded-xl text-center">
+                        इस विषय के अंतर्गत कोई अध्याय अभी उपलब्ध नहीं है। "नया अध्याय जोड़ें" बटन दबाएं।
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         ) : (

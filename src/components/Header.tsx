@@ -1,9 +1,9 @@
 import React from "react";
-import { BookOpen, Users, Lock, Unlock, Sliders, Home } from "lucide-react";
+import { BookOpen, Users, Lock, Unlock, Sliders, Home, Tv } from "lucide-react";
 
 interface HeaderProps {
-  activeTab: "home" | "dev" | "admin";
-  setActiveTab: (tab: "home" | "dev" | "admin") => void;
+  activeTab: "home" | "signLanguage" | "dev" | "admin";
+  setActiveTab: (tab: "home" | "signLanguage" | "dev" | "admin") => void;
   isAdminLocked: boolean;
 }
 
@@ -48,6 +48,19 @@ export default function Header({
             >
               <Home className="w-4 h-4" />
               <span>मुख्य पृष्ठ</span>
+            </button>
+
+            <button
+              id="nav-sign-language"
+              onClick={() => setActiveTab("signLanguage")}
+              className={`flex items-center gap-1 md:gap-2 px-3 py-2 rounded-lg font-bold transition-all duration-200 text-xs md:text-sm ${
+                activeTab === "signLanguage"
+                  ? "bg-white text-emerald-800 shadow-md animate-pulse"
+                  : "text-emerald-100 hover:bg-white/10"
+              }`}
+            >
+              <Tv className="w-4 h-4" />
+              <span>सांकेतिक भाषा</span>
             </button>
 
             <button

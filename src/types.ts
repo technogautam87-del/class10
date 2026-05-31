@@ -77,6 +77,27 @@ export interface Flashcard {
   subject: string;
 }
 
+export interface SignLanguageTopic {
+  id: string;
+  title: string;
+  youtubeUrl: string;
+}
+
+export interface SignLanguageChapter {
+  id: string;
+  title: string;
+  topics: SignLanguageTopic[];
+}
+
+export interface SignLanguageSubject {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+  textColor: string;
+  chapters: SignLanguageChapter[];
+}
+
 export interface AdminConfig {
   username: string;
   passwordHash: string; // Stored safely in local state

@@ -1,4 +1,4 @@
-import { Subject, TeamMember, Flashcard, AdminConfig, QuizQuestion } from "../types";
+import { Subject, TeamMember, Flashcard, AdminConfig, QuizQuestion, SignLanguageSubject } from "../types";
 
 // Helper to generate distinct questions to ensure we have exactly 50 high-quality questions for each subject
 const makeMathQuestions = (): QuizQuestion[] => {
@@ -466,6 +466,90 @@ export const INITIAL_FLASHCARDS: Flashcard[] = [
   { id: "f4", question: "यमक अलंकार किसे कहते हैं?", answer: "जब वाक्य में एक ही शब्द बार-बार आए लेकिन उसका अर्थ अलग-अलग हो (जैसे: कनक कनक ते सौ गुनी)।", subject: "हिंदी" },
   { id: "f5", question: "What is first conditional structure?", answer: "If + Simple Present, Will + Base Verb (e.g., If you study, you will pass).", subject: "अंग्रेज़ी" },
   { id: "f6", question: "सज्जनः शब्द का संधि विच्छेद क्या है?", answer: "सत् + जनः (यह व्यंजन संधि का एक अनुपम उदाहरण है)।", subject: "संस्कृत" }
+];
+
+export const INITIAL_SIGN_LANGUAGE: SignLanguageSubject[] = [
+  {
+    id: "sl-sci",
+    name: "सांकेतिक विज्ञान (Sign Science)",
+    description: "विशेष रूप से मूक-बधिर विद्यार्थियों के लिए भारतीय सांकेतिक भाषा (ISL) में विज्ञान के अध्याय।",
+    color: "bg-emerald-50 border-emerald-200 text-emerald-700",
+    textColor: "text-emerald-600",
+    chapters: [
+      {
+        id: "sl-sci-ch1",
+        title: "अध्याय 1: रासायनिक अभिक्रियाएं एवं समीकरण",
+        topics: [
+          {
+            id: "sl-sci-ch1-t1",
+            title: "रासायनिक समीकरण का परिचय और संतुलन (Introduction & Balancing)",
+            youtubeUrl: "https://www.youtube.com/embed/P6d5R8VpxwY"
+          },
+          {
+            id: "sl-sci-ch1-t2",
+            title: "रासायनिक अभिक्रियाओं के प्रकार (Types of Chemical Reactions)",
+            youtubeUrl: "https://www.youtube.com/embed/P_PqR2ncojY"
+          }
+        ]
+      },
+      {
+        id: "sl-sci-ch2",
+        title: "अध्याय 2: अम्ल, क्षारक एवं लवण",
+        topics: [
+          {
+            id: "sl-sci-ch2-t1",
+            title: "अम्ल एवं क्षारक के रासायनिक गुणधर्म (Chemical Properties)",
+            youtubeUrl: "https://www.youtube.com/embed/rG3Y2AInm0c"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: "sl-math",
+    name: "सांकेतिक गणित (Sign Mathematics)",
+    description: "भारतीय सांकेतिक भाषा (ISL) में सांकेतिक चित्रों और इशारों द्वारा गणित के जटिल सूत्रों का स्पष्टीकरण।",
+    color: "bg-indigo-50 border-indigo-200 text-indigo-700",
+    textColor: "text-indigo-600",
+    chapters: [
+      {
+        id: "sl-math-ch1",
+        title: "अध्याय 1: वास्तविक संख्याएं",
+        topics: [
+          {
+            id: "sl-math-ch1-t1",
+            title: "यूक्लिड विभाजन प्रमेयिका और HCF (Euclid's Lemma)",
+            youtubeUrl: "https://www.youtube.com/embed/V6mN-yv_yv0"
+          },
+          {
+            id: "sl-math-ch1-t2",
+            title: "अपरिमेय संख्याओं सिद्ध करना (Proving Irrational Numbers)",
+            youtubeUrl: "https://www.youtube.com/embed/T6_WlZxpG_4"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: "sl-sst",
+    name: "सांकेतिक सामाजिक विज्ञान (Sign Social Science)",
+    description: "भारतीय सांकेतिक भाषा (ISL) में इतिहास, भूगोल और नागरिक शास्त्र के महत्वपूर्ण पाठों का संकलन।",
+    color: "bg-rose-50 border-rose-200 text-rose-700",
+    textColor: "text-rose-600",
+    chapters: [
+      {
+        id: "sl-sst-ch1",
+        title: "अध्याय 1: यूरोप में राष्ट्रवाद का उदय",
+        topics: [
+          {
+            id: "sl-sst-ch1-t1",
+            title: "फ्रांसीसी क्रांति और राष्ट्र का विचार (French Revolution & Idea of Nation)",
+            youtubeUrl: "https://www.youtube.com/embed/vsc6FId8W_k"
+          }
+        ]
+      }
+    ]
+  }
 ];
 
 export const INITIAL_ADMIN: AdminConfig = {
