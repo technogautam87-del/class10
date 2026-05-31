@@ -17,6 +17,46 @@ import {
   GitFork
 } from "lucide-react";
 
+// Helper function to safely format manually updated YouTube URLs to embed URLs for iframes
+function getEmbedUrl(url: string): string {
+  if (!url) return "";
+  let cleaned = url.trim();
+  if (cleaned.includes("/embed/")) {
+    return cleaned;
+  }
+  if (cleaned.includes("youtube.com/watch")) {
+    try {
+      const urlObj = new URL(cleaned);
+      const videoId = urlObj.searchParams.get("v");
+      if (videoId) return `https://www.youtube.com/embed/${videoId}`;
+    } catch (e) {
+      const match = cleaned.match(/[?&]v=([^&#]+)/);
+      if (match && match[1]) return `https://www.youtube.com/embed/${match[1]}`;
+    }
+  }
+  if (cleaned.includes("youtu.be/")) {
+    try {
+      const urlObj = new URL(cleaned);
+      const videoId = urlObj.pathname.substring(1);
+      if (videoId) return `https://www.youtube.com/embed/${videoId}`;
+    } catch (e) {
+      const parts = cleaned.split("youtu.be/");
+      if (parts && parts[1]) {
+        const id = parts[1].split(/[?#]/)[0];
+        if (id) return `https://www.youtube.com/embed/${id}`;
+      }
+    }
+  }
+  if (cleaned.includes("/shorts/")) {
+    const parts = cleaned.split("/shorts/");
+    if (parts && parts[1]) {
+      const id = parts[1].split(/[?#]/)[0];
+      if (id) return `https://www.youtube.com/embed/${id}`;
+    }
+  }
+  return cleaned;
+}
+
 interface SubjectContentProps {
   subject: Subject;
   fontSizeClass: string;
@@ -203,8 +243,8 @@ export default function SubjectContent({
                   <VideoIcon className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm sm:text-base font-black text-slate-800">📖 अध्याय-वार व्याख्यान (DIKSHA & PM e-Vidya)</h4>
-                  <p className="text-[11px] text-slate-500 font-bold">नीचे ड्रापडाउन से अध्याय चुनें। सरकार द्वारा अनुमोदित दीक्षा तथा पीएम ई-विद्या के पाठ देखें।</p>
+                  <h4 className="text-sm sm:text-base font-black text-slate-800">📖 अध्याय-वार वीडियो व्याख्यान</h4>
+                  <p className="text-[11px] text-slate-500 font-bold">नीचे ड्रापडाउन से अध्याय चुनें और अपनी बोर्ड परीक्षा की तैयारी के लिए सर्वश्रेष्ठ यूट्यूब व्याख्यान देखें।</p>
                 </div>
               </div>
 
@@ -235,7 +275,7 @@ export default function SubjectContent({
                   <div className="bg-slate-900 rounded-3xl overflow-hidden shadow-2xl p-2.5 border-2 border-amber-100 flex flex-col justify-between">
                     <div className="aspect-video w-full rounded-2xl overflow-hidden relative bg-black">
                       <iframe
-                        src={selectedVideo.url}
+                        src={getEmbedUrl(selectedVideo.url)}
                         title={selectedVideo.title}
                         className="w-full h-full"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -265,77 +305,61 @@ export default function SubjectContent({
                         </p>
                       )}
 
-                      {/* Explicit Interactive Portal Access Buttons on Player to fulfill request */}
-                      <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700/60 mt-4 space-y-2.5">
-                        <span className="text-[10px] font-black tracking-wider text-amber-400 uppercase block">
-                          ⚡ त्वरित आधिकारिक सरकारी पोर्टल कड़ियों का उपयोग करें:
-                        </span>
-                        <div className="flex flex-col sm:flex-row gap-2.5">
-                          <a
-                            href={`https://diksha.gov.in/explore?key=${encodeURIComponent(selectedChapterObj?.title || selectedVideo.title)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="bg-amber-600 hover:bg-amber-700 text-white font-black text-xs px-3.5 py-2 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95"
-                          >
-                            <span>🎯 DIKSHA पोर्टल पर विवरण देखें</span>
-                          </a>
-                          <a
-                            href={`https://www.youtube.com/results?search_query=PM+eVidya+Class+10+${encodeURIComponent(subject.name)}+${encodeURIComponent(selectedChapterObj?.title || selectedVideo.title)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="bg-sky-600 hover:bg-sky-700 text-white font-black text-xs px-3.5 py-2 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95"
-                          >
-                            <span>📺 PM-eVidya वीडियो खोजें</span>
-                          </a>
+                      {/* Direct YouTube Video Link */}
+                      <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700/60 mt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="space-y-0.5 text-left">
+                          <span className="text-[10px] font-black tracking-wider text-amber-400 uppercase block">
+                            यूट्यूब डायरेक्ट वीडियो एक्सेस
+                          </span>
+                          <span className="text-xs text-slate-300 font-bold">
+                            क्या आप इस वीडियो को सीधे यूट्यूब वेबसाइट या ऐप में खोलना चाहते हैं?
+                          </span>
                         </div>
+                        <a
+                          href={selectedVideo.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full sm:w-auto bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs px-5 py-3 rounded-xl flex items-center justify-center gap-2 transition active:scale-95 shadow-md shadow-rose-950/20 shrink-0"
+                        >
+                          <Youtube className="w-4 h-4 text-white" />
+                          <span>यूट्यूब पर सीधे वीडियो खोलें</span>
+                        </a>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  /* GORGEOUS FALLBACK PORTAL INTEGRATION CARD FOR CHAPTERS WITH NO LOCAL EMBED */
+                  /* GORGEOUS FALLBACK CARD FOR CHAPTERS WITH NO LOCAL EMBED */
                   <div className="bg-slate-900 border-2 border-amber-500/30 rounded-3xl p-6 sm:p-8 text-center text-white space-y-6 shadow-2xl flex flex-col justify-center items-center relative overflow-hidden" id="portal-matching-callout">
                     <div className="absolute top-0 right-0 p-16 opacity-5 pointer-events-none transform translate-x-12 -translate-y-12">
                       <VideoIcon className="w-64 h-64" />
                     </div>
 
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 to-rose-600 flex items-center justify-center text-3xl animate-bounce shadow-lg shadow-orange-950/40">
-                      ⚡
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-rose-500 to-amber-600 flex items-center justify-center text-3xl animate-bounce shadow-lg shadow-orange-950/40">
+                      📺
                     </div>
                     
                     <div className="space-y-2 max-w-xl">
                       <span className="text-yellow-400 font-black text-xs tracking-wider block uppercase">
-                        भारत सरकार डिजिटल शिक्षा पहल (NEP Portal Integration)
+                        विषय व्याख्यान खोजें (YouTube Video Search)
                       </span>
                       <h3 className="text-lg sm:text-2xl font-black text-white">
                         {selectedChapterObj?.title}
                       </h3>
                       <p className="text-xs text-slate-300 font-bold leading-relaxed">
-                        इस विशिष्ट अध्याय के व्याख्यान, डिजिटल पाठ्यपुस्तकें और संवादात्मक आरेख <strong>DIKSHA Portal</strong> तथा <strong>PM e-Vidya</strong> पर पूर्णतः निःशुल्क और व्यवस्थित तरीके से उपलब्ध कराए गए हैं। कृपया निम्न मुख्य लिंक्स पर क्लिक करें:
+                        इस विशिष्ट अध्याय के लिए कोई स्थानीय वीडियो व्याख्यान उपलब्ध नहीं है। आप सीधे यूट्यूब पर इस विषय से जुड़े उत्कृष्ट वीडियो देख सकते हैं। कृपया नीचे दिए गए यूट्यूब सर्च बटन पर क्लिक करें:
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 w-full max-w-lg">
+                    <div className="grid grid-cols-1 gap-3.5 w-full max-w-xs">
                       <a 
-                        href={`https://diksha.gov.in/explore?key=${encodeURIComponent(selectedChapterObj?.title || subject.name)}`}
+                        href={`https://www.youtube.com/results?search_query=NCERT+Class+10+${encodeURIComponent(subject.name)}+${encodeURIComponent(selectedChapterObj?.title || "")}`}
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="bg-amber-600 hover:bg-amber-700 text-white py-3 px-4 rounded-xl text-xs font-black shadow-md transition transform active:scale-95 flex items-center justify-center gap-2"
+                        className="bg-rose-600 hover:bg-rose-700 text-white py-3 px-4 rounded-xl text-xs font-black shadow-md transition transform active:scale-95 flex items-center justify-center gap-2"
                       >
-                        <span>🎯 DIKSHA पोर्टल पर खोलें</span>
+                        <Youtube className="w-4 h-4" />
+                        <span>यूट्यूब पर वीडियो खोजें</span>
                       </a>
-                      
-                      <a 
-                        href={`https://www.youtube.com/results?search_query=PM+eVidya+Class+10+${encodeURIComponent(subject.name)}+${encodeURIComponent(selectedChapterObj?.title || "")}`}
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="bg-sky-600 hover:bg-sky-700 text-white py-3 px-4 rounded-xl text-xs font-black shadow-md transition transform active:scale-95 flex items-center justify-center gap-2"
-                      >
-                        <span>📺 PM e-Vidya व्याख्यान खोजें</span>
-                      </a>
-                    </div>
-                    
-                    <div className="text-[10px] text-slate-500 font-bold border-t border-slate-800/80 pt-3 w-full">
-                      राष्ट्रीय शिक्षा नीति (NEP) के अंतर्गत सुगम्य डिजिटल अध्ययन पोर्टल कड़ियाँ
                     </div>
                   </div>
                 )}
@@ -377,7 +401,7 @@ export default function SubjectContent({
                   })
                 ) : (
                   <div className="text-center py-8 text-slate-400 text-xs font-bold bg-slate-50 border border-dashed rounded-2xl p-4">
-                    इस अध्याय के स्थानीय व्याख्यान उपलब्ध नहीं हैं। सीधे बाएं दीक्षा अथवा PM e-Vidya के पोर्टल लाइव प्ले बटनों का उपयोग करें!
+                    इस अध्याय के वीडियो व्याख्यान उपलब्ध नहीं हैं। विषय का नाम बदलकर नई खोज करें।
                   </div>
                 )}
               </div>
